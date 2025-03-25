@@ -1,0 +1,9 @@
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+moonticket_jackpot = "GmyMFG4QwHh2YK4bjy489eBzf9Hzf3BLZ1sFfznoeWpB"
+
+[scripts]
+test = "mocha -t 1000000 tests/moonticket-jackpot.test.js"

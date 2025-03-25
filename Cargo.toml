@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "programs/moonticket-jackpot"
+]
+resolver = "2"
+
+[profile.dev]
+overflow-checks = false
+
+[profile.release]
+overflow-checks = false
+lto = "fat"
+codegen-units = 1
+

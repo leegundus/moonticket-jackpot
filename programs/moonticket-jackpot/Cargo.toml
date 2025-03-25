@@ -1,0 +1,16 @@
+[package]
+name = "moonticket-jackpot"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "moonticket_jackpot"
+
+[dependencies]
+anchor-lang = { version = "0.31.0", features = ["init-if-needed"] }
+anchor-spl = "0.31.0"
+solana-program = "2.1.16"
