@@ -134,6 +134,7 @@ pub struct Initialize<'info> {
 }
 
 #[account]
+#[derive(Debug, Default)]
 pub struct Jackpot {
     pub total_weekly_entries: u64,
     pub total_monthly_entries: u64,
@@ -147,6 +148,7 @@ impl Jackpot {
 }
 
 #[account]
+#[derive(Debug, Default)]
 pub struct UserAccount {
     pub weekly_entries: u64,
     pub monthly_entries: u64,
