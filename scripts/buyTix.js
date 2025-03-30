@@ -17,21 +17,11 @@ const {
 const fs = require("fs");
 const os = require("os");
 
-// === CONSTANTS ===
+// === CONFIG ===
 const SOL_PRICE_USD = 180;
 const TIX_PRICE_USD = 0.00001;
 const DECIMALS = 9;
 
-// === CLI ARGS ===
-const BUYER_ADDRESS = process.argv[2];
-const SOL_AMOUNT = parseFloat(process.argv[3]);
-
-if (!BUYER_ADDRESS || isNaN(SOL_AMOUNT)) {
-  console.error("Usage: node buyTix.js <buyer_address> <sol_amount>");
-  process.exit(1);
-}
-
-// === CONFIG ===
 const TREASURY_KEYPAIR = Keypair.fromSecretKey(
   Uint8Array.from(
     JSON.parse(
@@ -40,22 +30,19 @@ const TREASURY_KEYPAIR = Keypair.fromSecretKey(
   )
 );
 const TREASURY_WALLET = TREASURY_KEYPAIR.publicKey;
-
-const FOUNDER_WALLET = new PublicKey("nJmonUssRvbp85Nvdd9Bnxgh86Hf6BtKfu49RdcoYE9"); // Your founder wallet
-
-const TOKEN_MINT = new PublicKey("CnDaNe3EpAgu2R2aK49nhnH9byf9Y3TWpm689uxavMbM"); // Your $TIX token mint
+const FOUNDER_WALLET = new PublicKey("nJmonUssRvbp85Nvdd9Bnxgh86Hf6BtKfu49RdcoYE9");
+const TOKEN_MINT = new PublicKey("CnDaNe3EpAgu2R2aK49nhnH9byf9Y3TWpm689uxavMbM");
 
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 
-// === CALCULATIONS ===
-const FOUNDER_FEE = SOL_AMOUNT * 0.01;
-const TRANSFER_TO_TREASURY = SOL_AMOUNT - FOUNDER_FEE;
+// === MAIN FUNCTION ===
+async function buyTix(walletAddress, solAmount) {
+  const FOUNDER_FEE = solAmount * 0.01;
+  const TIX_AMOUNT = Math.floor((solAmount * SOL_PRICE_USD) / TIX_PRICE_USD);
+  const TIX_AMOUNT_RAW = TIX_AMOUNT * 10 ** DECIMALS;
 
-const TIX_AMOUNT = Math.floor((SOL_AMOUNT * SOL_PRICE_USD) / TIX_PRICE_USD);
-const TIX_AMOUNT_RAW = TIX_AMOUNT * 10 ** DECIMALS;
+  const buyerPublicKey = new PublicKey(walletAddress);
 
-// === EXECUTE ===
-(async () => {
   try {
     const latestBlockhash = await connection.getLatestBlockhash();
 
@@ -76,14 +63,15 @@ const TIX_AMOUNT_RAW = TIX_AMOUNT * 10 ** DECIMALS;
       connection,
       feeTx,
       [TREASURY_KEYPAIR],
-      { commitment: "confirmed", preflightCommitment: "confirmed", lastValidBlockHeight: latestBlockhash.lastValidBlockHeight }
+      {
+        commitment: "confirmed",
+        preflightCommitment: "confirmed",
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+      }
     );
 
-    // 2. Transfer remaining SOL to treasury (noop — already in treasury)
-
-    // 3. Transfer $TIX tokens to buyer
+    // 2. Transfer $TIX tokens to buyer
     console.log(`Sending ${TIX_AMOUNT.toLocaleString()} $TIX to buyer...`);
-    const buyerPublicKey = new PublicKey(BUYER_ADDRESS);
 
     const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
@@ -99,10 +87,10 @@ const TIX_AMOUNT_RAW = TIX_AMOUNT * 10 ** DECIMALS;
       buyerPublicKey
     );
 
-    const latestTokenBlockhash = await connection.getLatestBlockhash();
+    const tokenBlockhash = await connection.getLatestBlockhash();
 
     const tx = new Transaction({
-      recentBlockhash: latestTokenBlockhash.blockhash,
+      recentBlockhash: tokenBlockhash.blockhash,
       feePayer: TREASURY_WALLET
     }).add(
       createTransferInstruction(
@@ -119,11 +107,44 @@ const TIX_AMOUNT_RAW = TIX_AMOUNT * 10 ** DECIMALS;
       connection,
       tx,
       [TREASURY_KEYPAIR],
-      { commitment: "confirmed", preflightCommitment: "confirmed", lastValidBlockHeight: latestTokenBlockhash.lastValidBlockHeight }
+      {
+        commitment: "confirmed",
+        preflightCommitment: "confirmed",
+        lastValidBlockHeight: tokenBlockhash.lastValidBlockHeight
+      }
     );
 
     console.log("Transfer successful:", sig);
+
+    return {
+      success: true,
+      signature: sig,
+      tixAmount: TIX_AMOUNT
+    };
   } catch (err) {
     console.error("Transaction failed:", err.message);
+    throw new Error("Transaction failed: " + err.message);
   }
-})();
+}
+
+// === SAFE CLI SUPPORT ===
+if (require.main === module) {
+  (async () => {
+    const [buyerAddress, solAmountRaw] = process.argv.slice(2);
+    const solAmount = parseFloat(solAmountRaw);
+
+    if (!buyerAddress || isNaN(solAmount)) {
+      console.error("Usage: node buyTix.js <buyer_address> <sol_amount>");
+      process.exit(1);
+    }
+
+    try {
+      const result = await buyTix(buyerAddress, solAmount);
+      console.log("CLI BuyTix Result:", result);
+    } catch (err) {
+      console.error("CLI Error:", err.message);
+    }
+  })();
+}
+// === EXPORT FUNCTION FOR NEXT.JS ===
+module.exports = buyTix;
