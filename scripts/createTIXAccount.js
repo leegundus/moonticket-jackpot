@@ -13,7 +13,7 @@ const NETWORK = "https://api.devnet.solana.com";
 const connection = new Connection(NETWORK, "confirmed");
 
 // Replace with your actual TIX mint address
-const TIX_MINT = new PublicKey("3H9wieuWWTqon5E6Zi83FNwcy9injPTtJMpZhnEK9T7");
+const TIX_MINT = new PublicKey("CnDaNe3EpAgu2R2aK49nhnH9byf9Y3TWpm689uxavMbM");
 
 // Load payer (must match recipient)
 const payer = anchor.web3.Keypair.fromSecretKey(
