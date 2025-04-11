@@ -97,7 +97,7 @@ async function runDraw() {
   const available = jackpotBalance - buffer;
   if (available <= 0) throw new Error("Not enough SOL");
 
-  const winnerAmount = Math.floor(available * 0.9);
+  const winnerAmount = Math.floor(available * 0.8);
   const opsAmount = available - winnerAmount;
 
   const tx = new Transaction().add(
@@ -140,3 +140,4 @@ function getNextDrawTime() {
   const last = getLastDrawTime();
   return new Date(last.getTime() + 7 * 24 * 60 * 60 * 1000);
 }
+

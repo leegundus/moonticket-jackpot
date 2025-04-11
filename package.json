@@ -8,11 +8,17 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
+    "@metaplex-foundation/js": "^0.20.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.0",
     "@supabase/supabase-js": "^2.49.4",
     "bs58": "^6.0.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "mime-types": "^3.0.1",
+    "nft.storage": "^4.0.1",
+    "undici": "^7.7.0",
+    "web3.storage": "^4.5.5"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",
