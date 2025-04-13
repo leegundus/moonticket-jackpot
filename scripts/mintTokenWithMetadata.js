@@ -23,11 +23,11 @@ const borsh = require('borsh');
 
 // === CONFIG ===
 const METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+const connection = new Connection(clusterApiUrl('mainnet-beta'), 'confirmed'); // ← MAINNET
 
 const TOKEN_NAME = 'Moonticket';
 const TOKEN_SYMBOL = 'TIX';
-const METADATA_URI = 'https://bafybeiel6hf3glnmal5l6h2kpkd7coh2t54dcguan6ue6iuv3nfa5uuz74.ipfs.w3s.link/tix-token.json';
+const METADATA_URI = 'https://bafkreihqxaswnvch2xl7xzjpohgmngzul3uc4te4totqj5s6kvxohivy4a.ipfs.w3s.link';
 
 // === Load Treasury Wallet ===
 const treasuryPath = path.join(os.homedir(), '.config/solana/treasury.json');
@@ -41,7 +41,7 @@ class DataV2 {
   }
 }
 class CreateMetadataArgs {
-  instruction = 33; // CreateMetadataAccountV3
+  instruction = 33;
   constructor(fields) {
     Object.assign(this, fields);
   }
@@ -71,10 +71,13 @@ const METADATA_SCHEMA = new Map([
 ]);
 
 (async () => {
-  // === Step 1: Mint New Token
   const mint = Keypair.generate();
   const lamports = await getMinimumBalanceForRentExemptMint(connection);
   const ata = await getAssociatedTokenAddress(mint.publicKey, payer.publicKey);
+
+  const decimals = 6;  // ← updated
+  const tokensToMint = 1_000_000_000_000; // 1 trillion tokens
+  const baseUnits = BigInt(tokensToMint) * BigInt(10 ** decimals); // ← updated for 6 decimals
 
   const mintTx = new Transaction()
     .add(SystemProgram.createAccount({
@@ -86,9 +89,9 @@ const METADATA_SCHEMA = new Map([
     }))
     .add(createInitializeMintInstruction(
       mint.publicKey,
-      9, // decimals
-      payer.publicKey, // mint authority
-      payer.publicKey  // freeze authority
+      decimals, // ← updated
+      payer.publicKey,
+      payer.publicKey
     ))
     .add(createAssociatedTokenAccountInstruction(
       payer.publicKey,
@@ -100,14 +103,13 @@ const METADATA_SCHEMA = new Map([
       mint.publicKey,
       ata,
       payer.publicKey,
-      1_000_000_000_000 // mint some tokens to yourself
+      baseUnits
     ));
 
   const mintSig = await sendAndConfirmTransaction(connection, mintTx, [payer, mint]);
   console.log('Mint created:', mint.publicKey.toBase58());
   console.log('Tx:', mintSig);
 
-  // === Step 2: Attach Metadata
   const [metadataPDA] = await PublicKey.findProgramAddress(
     [
       Buffer.from('metadata'),
@@ -139,9 +141,9 @@ const METADATA_SCHEMA = new Map([
     keys: [
       { pubkey: metadataPDA, isSigner: false, isWritable: true },
       { pubkey: mint.publicKey, isSigner: false, isWritable: false },
-      { pubkey: payer.publicKey, isSigner: true, isWritable: false }, // mint authority
-      { pubkey: payer.publicKey, isSigner: true, isWritable: false }, // payer
-      { pubkey: payer.publicKey, isSigner: true, isWritable: false }, // update authority
+      { pubkey: payer.publicKey, isSigner: true, isWritable: false },
+      { pubkey: payer.publicKey, isSigner: true, isWritable: false },
+      { pubkey: payer.publicKey, isSigner: true, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     programId: METADATA_PROGRAM_ID,
@@ -154,4 +156,3 @@ const METADATA_SCHEMA = new Map([
   console.log('Metadata attached!');
   console.log('Metadata Tx:', metaSig);
 })();
-

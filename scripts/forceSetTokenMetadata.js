@@ -5,8 +5,8 @@ const os = require('os');
 const path = require('path');
 
 // === CONFIG ===
-const MINT_ADDRESS = 'CnDaNe3EpAgu2R2aK49nhnH9byf9Y3TWpm689uxavMbM';
-const METADATA_URI = 'ipfs://bafybeibpimsx4wq7yngc6kjrowox2ynf5obrbs7xg6brsgiuecaxheyraq/tix-token.json';
+const MINT_ADDRESS = 'F3tGNp3GN8qefseSBAkXHB8z1sqTMWJSJreSYZSgrgbR';
+const METADATA_URI = 'https://bafybeigmgptn3zdy3hdc6z42ky3kdi57evlsr6ddkyltb7ljnkfyd7rcry.ipfs.w3s.link/tix-token.json';
 const TOKEN_NAME = 'Moonticket';
 const TOKEN_SYMBOL = 'TIX';
 

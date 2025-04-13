@@ -1,13 +1,13 @@
-const { Connection, clusterApiUrl, Keypair, PublicKey } = require('@solana/web3.js');
+const { Connection, clusterApiUrl, PublicKey, Keypair } = require('@solana/web3.js');
 const { Metaplex, keypairIdentity } = require('@metaplex-foundation/js');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
 // === CONFIG ===
-const MINT_ADDRESS = 'CnDaNe3EpAgu2R2aK49nhnH9byf9Y3TWpm689uxavMbM';
-const METADATA_URI = 'ipfs://bafybeibpimsx4wq7yngc6kjrowox2ynf5obrbs7xg6brsgiuecaxheyraq/tix-token.json';
-const TOKEN_NAME = 'Moonticket';
+const MINT_ADDRESS = new PublicKey('F3tGNp3GN8qefseSBAkXHB8z1sqTMWJSJreSYZSgrgbR');
+const METADATA_URI = 'https://bafkreih23wnppox4ipd4gxsgt7lu4zkqqphtl3q55x3krywlfrgyt3gt44.ipfs.w3s.link';
+const TOKEN_NAME = 'Moonticket V2';
 const TOKEN_SYMBOL = 'TIX';
 
 // === Load Treasury Wallet ===
@@ -19,19 +19,18 @@ const treasury = Keypair.fromSecretKey(new Uint8Array(treasuryKey));
   const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
   const metaplex = Metaplex.make(connection).use(keypairIdentity(treasury));
 
-  const mint = new PublicKey(MINT_ADDRESS);
+  console.log('Fetching current metadata...');
+  const nft = await metaplex.nfts().findByMint({ mintAddress: MINT_ADDRESS });
 
-  const { nft, response } = await metaplex.nfts().create({
-    uri: METADATA_URI,
+  console.log('Updating metadata...');
+  const { response } = await metaplex.nfts().update({
+    nftOrSft: nft,
     name: TOKEN_NAME,
     symbol: TOKEN_SYMBOL,
-    sellerFeeBasisPoints: 0,
-    isMutable: true,
+    uri: METADATA_URI,
     updateAuthority: treasury,
-    mintAddress: mint,
   });
 
-  console.log('Metadata successfully attached!');
-  console.log('Mint:', nft.address.toBase58());
+  console.log('Metadata updated successfully!');
   console.log('Tx Signature:', response.signature);
 })();
