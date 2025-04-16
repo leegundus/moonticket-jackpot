@@ -5,9 +5,9 @@ const os = require('os');
 const path = require('path');
 
 // === CONFIG ===
-const MINT_ADDRESS = new PublicKey('F3tGNp3GN8qefseSBAkXHB8z1sqTMWJSJreSYZSgrgbR');
-const METADATA_URI = 'https://bafkreih23wnppox4ipd4gxsgt7lu4zkqqphtl3q55x3krywlfrgyt3gt44.ipfs.w3s.link';
-const TOKEN_NAME = 'Moonticket V2';
+const MINT_ADDRESS = new PublicKey('8CVzxjxLB2aHVEbWRqzHtdkNRotMnNFef6epzrsGNB3a');
+const METADATA_URI = 'https://bafkreifdzb6yz42x2unjg5miu37n737hwk2ros5rbu4qii5nw64kaenwju.ipfs.w3s.link';
+const TOKEN_NAME = 'Moonticket';
 const TOKEN_SYMBOL = 'TIX';
 
 // === Load Treasury Wallet ===

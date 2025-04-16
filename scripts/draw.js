@@ -30,35 +30,72 @@ const supabase = createClient(
 
 // -------------------- ENTRY LOGIC --------------------
 async function fetchEligibleEntries() {
+  // Fetch last draw date
+  const { data: draws, error: drawError } = await supabase
+    .from("draws")
+    .select("draw_date")
+    .eq("draw_type", "moon")
+    .order("draw_date", { ascending: false })
+    .limit(1);
+
+  if (drawError) throw new Error("Failed to fetch last draw");
+  const lastDrawTime = draws?.[0]?.draw_date
+    ? new Date(draws[0].draw_date)
+    : new Date(0); // If no previous draw, include all time
+
+  console.log("Last Draw:", lastDrawTime.toISOString());
+
+  // Fetch entries since last draw
   const { data, error } = await supabase
     .from("entries")
     .select("*")
-    .gte("created_at", getLastDrawTime().toISOString())
-    .lt("created_at", getNextDrawTime().toISOString());
+    .gte("created_at", lastDrawTime.toISOString());
 
   if (error) throw new Error("Failed to fetch entries");
 
   const grouped = {};
   for (const row of data) {
-    if (!grouped[row.wallet]) grouped[row.wallet] = { totalEntries: 0, totalTix: 0 };
-    grouped[row.wallet].totalEntries += row.entries;
-    grouped[row.wallet].totalTix += row.tix_amount;
+    let walletStr = String(row.wallet).trim().replace(/\u0000/g, "");
+
+    try {
+      const pubkey = new PublicKey(walletStr); // confirm it's valid
+      walletStr = pubkey.toBase58(); // normalize
+    } catch {
+      console.warn("Invalid wallet skipped:", row.wallet);
+      continue;
+    }
+
+    if (!grouped[walletStr]) grouped[walletStr] = { totalEntries: 0, totalTix: 0 };
+    grouped[walletStr].totalEntries += row.entries || 0;
+    grouped[walletStr].totalTix += row.tix_amount || 0;
   }
 
   const eligible = [];
   for (const wallet of Object.keys(grouped)) {
-    const ata = await getAssociatedTokenAddress(TIX_MINT, new PublicKey(wallet), false);
     try {
+      const pubkey = new PublicKey(wallet);
+      const ata = await getAssociatedTokenAddress(TIX_MINT, pubkey, false);
       const account = await getAccount(connection, ata);
       const currentBalance = Number(account.amount) / 1e6;
-      const heldRatio = currentBalance / grouped[wallet].totalTix;
+      const heldRatio = grouped[wallet].totalTix > 0
+        ? currentBalance / grouped[wallet].totalTix
+        : 1;
       const effective = Math.min(
         Math.floor(grouped[wallet].totalEntries * heldRatio),
         grouped[wallet].totalEntries
       );
-      console.log(`Wallet ${wallet} - currentBalance: ${currentBalance}, purchased: ${grouped[wallet].totalTix}, ratio: ${heldRatio}, entries: ${effective}`);
-      if (effective > 0) eligible.push(...Array(effective).fill(wallet));
-    } catch (_) {}
+
+      console.log(`--- Wallet: ${wallet} ---`);
+      console.log(`Current $TIX Balance: ${currentBalance}`);
+      console.log(`Total $TIX Purchased: ${grouped[wallet].totalTix}`);
+      console.log(`Held Ratio: ${heldRatio}`);
+      console.log(`Effective Entries: ${effective}`);
+
+      const count = Math.floor(effective);
+      if (count > 0) eligible.push(...Array(count).fill(wallet));
+    } catch (err) {
+      console.warn(`Failed to process wallet ${wallet}`, err.message);
+    }
   }
 
   return eligible;
@@ -125,19 +162,3 @@ async function runDraw() {
 }
 
 runDraw().catch(console.error);
-
-// -------------------- TIME --------------------
-function getLastDrawTime() {
-  const now = new Date();
-  const day = now.getUTCDay();
-  const hour = now.getUTCHours();
-  let daysSinceMonday = (day + 6) % 7;
-  if (day === 1 && hour < 3) daysSinceMonday = 7;
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysSinceMonday, 3));
-}
-
-function getNextDrawTime() {
-  const last = getLastDrawTime();
-  return new Date(last.getTime() + 7 * 24 * 60 * 60 * 1000);
-}
-
