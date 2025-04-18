@@ -85,11 +85,11 @@ async function fetchEligibleEntries() {
         grouped[wallet].totalEntries
       );
 
-      console.log(`--- Wallet: ${wallet} ---`);
-      console.log(`Current $TIX Balance: ${currentBalance}`);
-      console.log(`Total $TIX Purchased: ${grouped[wallet].totalTix}`);
-      console.log(`Held Ratio: ${heldRatio}`);
-      console.log(`Effective Entries: ${effective}`);
+      //console.log(`--- Wallet: ${wallet} ---`);
+      //console.log(`Current $TIX Balance: ${currentBalance}`);
+      //console.log(`Total $TIX Purchased: ${grouped[wallet].totalTix}`);
+      //console.log(`Held Ratio: ${heldRatio}`);
+      //console.log(`Effective Entries: ${effective}`);
 
       const count = Math.floor(effective);
       if (count > 0) eligible.push(...Array(count).fill(wallet));
