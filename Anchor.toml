@@ -1,8 +1,8 @@
 [provider]
-cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+cluster = "mainnet"
+wallet = "~/.config/solana/treasury.json"
 
-[programs.devnet]
+[programs.mainnet]
 moonticket_jackpot = "GmyMFG4QwHh2YK4bjy489eBzf9Hzf3BLZ1sFfznoeWpB"
 
 [scripts]
