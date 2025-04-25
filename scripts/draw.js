@@ -107,13 +107,14 @@ function pickRandomWinner(pool) {
 }
 
 // -------------------- LOG --------------------
-async function logDraw(winner, amount, entries) {
+async function logDraw(winner, amount, entries, signature) {
   const { error } = await supabase.from("draws").insert([{
     draw_type: "moon",
     draw_date: new Date().toISOString(),
     winner,
     jackpot_sol: amount / LAMPORTS_PER_SOL,
-    entries
+    entries,
+    tx_signature: signature,
   }]);
   if (error) throw new Error("Failed to log draw");
 }
@@ -157,7 +158,7 @@ async function runDraw() {
   const sig = await sendAndConfirmTransaction(connection, tx, [payer]);
   console.log("Transaction sent:", sig);
 
-  await logDraw(winner, winnerAmount + opsAmount, entries);
+  await logDraw(winner, available, entries, sig);
   console.log("Draw complete.");
 }
 
