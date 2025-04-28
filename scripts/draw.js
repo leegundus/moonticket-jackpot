@@ -13,11 +13,11 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 // -------------------- CONFIG --------------------
-const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=47d9c64e-1d5a-4623-abaf-ee532aca9eaa", "confirmed");
 const PROGRAM_ID = new PublicKey("GmyMFG4QwHh2YK4bjy489eBzf9Hzf3BLZ1sFfznoeWpB");
 const TREASURY = new PublicKey("FrAvtjXo5JCsWrjcphvWCGQDrXX8PuEbN2qu2SGdvurG");
 const OPS_WALLET = new PublicKey("nJmonUssRvbp85Nvdd9Bnxgh86Hf6BtKfu49RdcoYE9");
-const TIX_MINT = new PublicKey("CnDaNe3EpAgu2R2aK49nhnH9byf9Y3TWpm689uxavMbM");
+const TIX_MINT = new PublicKey("8e9Mqnczw7MHjdjYaRe3tppbXgRdT6bqTyR3n8b4C4Ek");
 
 const payer = Keypair.fromSecretKey(
   Uint8Array.from(JSON.parse(process.env.DRAW_PAYER_PRIVATE_KEY))
