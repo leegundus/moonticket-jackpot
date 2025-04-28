@@ -26,7 +26,12 @@ yarn-error.log*
 firebase-debug.log
 .supabase/
 
+
 # Anchor files (for jackpot repo)
 target/
 test-ledger/
 programs/**/*.keypair.json
+**/admin.json
+**/founder.json
+**/treasury.json
+**/user*.json
