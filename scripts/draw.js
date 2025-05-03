@@ -13,7 +13,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 // -------------------- CONFIG --------------------
-const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=47d9c64e-1d5a-4623-abaf-ee532aca9eaa", "confirmed");
+const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL, "confirmed");
 const PROGRAM_ID = new PublicKey("GmyMFG4QwHh2YK4bjy489eBzf9Hzf3BLZ1sFfznoeWpB");
 const TREASURY = new PublicKey("FrAvtjXo5JCsWrjcphvWCGQDrXX8PuEbN2qu2SGdvurG");
 const OPS_WALLET = new PublicKey("nJmonUssRvbp85Nvdd9Bnxgh86Hf6BtKfu49RdcoYE9");
