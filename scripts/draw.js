@@ -1,3 +1,6 @@
+const dotenv = require("dotenv");
+dotenv.config({ path: ".env.local" });
+
 const {
   Connection,
   PublicKey,
@@ -9,11 +12,9 @@ const {
 } = require("@solana/web3.js");
 const { getAssociatedTokenAddress, getAccount } = require("@solana/spl-token");
 const { createClient } = require("@supabase/supabase-js");
-const dotenv = require("dotenv");
-dotenv.config();
 
 // -------------------- CONFIG --------------------
-const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL, "confirmed");
+const connection = new Connection(process.env.RPC_URL, "confirmed");
 const PROGRAM_ID = new PublicKey("GmyMFG4QwHh2YK4bjy489eBzf9Hzf3BLZ1sFfznoeWpB");
 const TREASURY = new PublicKey("FrAvtjXo5JCsWrjcphvWCGQDrXX8PuEbN2qu2SGdvurG");
 const OPS_WALLET = new PublicKey("nJmonUssRvbp85Nvdd9Bnxgh86Hf6BtKfu49RdcoYE9");
