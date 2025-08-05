@@ -75,22 +75,19 @@ async function fetchEligibleEntries() {
   for (const wallet of Object.keys(grouped)) {
     try {
       const pubkey = new PublicKey(wallet);
-      const ata = await getAssociatedTokenAddress(TIX_MINT, pubkey, false);
-      const account = await getAccount(connection, ata);
-      const currentBalance = Number(account.amount) / 1e6;
-      const heldRatio = grouped[wallet].totalTix > 0
-        ? currentBalance / grouped[wallet].totalTix
-        : 1;
+      let heldRatio = 1;
+
+      if (grouped[wallet].totalTix > 0) {
+        const ata = await getAssociatedTokenAddress(TIX_MINT, pubkey, false);
+        const account = await getAccount(connection, ata);
+        const currentBalance = Number(account.amount) / 1e6;
+        heldRatio = currentBalance / grouped[wallet].totalTix;
+      }
+
       const effective = Math.min(
         Math.floor(grouped[wallet].totalEntries * heldRatio),
         grouped[wallet].totalEntries
       );
-
-      //console.log(`--- Wallet: ${wallet} ---`);
-      //console.log(`Current $TIX Balance: ${currentBalance}`);
-      //console.log(`Total $TIX Purchased: ${grouped[wallet].totalTix}`);
-      //console.log(`Held Ratio: ${heldRatio}`);
-      //console.log(`Effective Entries: ${effective}`);
 
       const count = Math.floor(effective);
       if (count > 0) eligible.push(...Array(count).fill(wallet));
