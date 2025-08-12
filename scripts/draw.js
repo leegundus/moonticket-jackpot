@@ -79,9 +79,18 @@ async function fetchEligibleEntries() {
 
       if (grouped[wallet].totalTix > 0) {
         const ata = await getAssociatedTokenAddress(TIX_MINT, pubkey, false);
-        const account = await getAccount(connection, ata);
-        const currentBalance = Number(account.amount) / 1e6;
+
+        // --- FIX: don’t throw if ATA doesn't exist; treat balance as 0 ---
+        const ataInfo = await connection.getAccountInfo(ata);
+
+        let currentBalance = 0;
+        if (ataInfo) {
+          const account = await getAccount(connection, ata);
+          currentBalance = Number(account.amount) / 1e6; // TIX has 6 decimals
+        }
         heldRatio = currentBalance / grouped[wallet].totalTix;
+        // clamp to [0,1] just in case
+        heldRatio = Math.max(0, Math.min(heldRatio, 1));
       }
 
       const effective = Math.min(
