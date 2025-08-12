@@ -10,7 +10,6 @@ const {
   sendAndConfirmTransaction,
   LAMPORTS_PER_SOL
 } = require("@solana/web3.js");
-const { getAssociatedTokenAddress, getAccount } = require("@solana/spl-token");
 const { createClient } = require("@supabase/supabase-js");
 
 // -------------------- CONFIG --------------------
@@ -30,8 +29,8 @@ const supabase = createClient(
 );
 
 // -------------------- ENTRY LOGIC --------------------
-async function fetchEligibleEntries() {
-  // Fetch last draw date
+async function fetchEligibleWeighted() {
+  // 1) Find last draw time
   const { data: draws, error: drawError } = await supabase
     .from("draws")
     .select("draw_date")
@@ -40,77 +39,61 @@ async function fetchEligibleEntries() {
     .limit(1);
 
   if (drawError) throw new Error("Failed to fetch last draw");
+
   const lastDrawTime = draws?.[0]?.draw_date
     ? new Date(draws[0].draw_date)
-    : new Date(0); // If no previous draw, include all time
+    : new Date(0);
 
   console.log("Last Draw:", lastDrawTime.toISOString());
 
-  // Fetch entries since last draw
-  const { data, error } = await supabase
+  // 2) Grab entries strictly after last draw
+  const { data: rows, error } = await supabase
     .from("entries")
-    .select("*")
+    .select("wallet, entries, created_at")
     .gte("created_at", lastDrawTime.toISOString());
 
   if (error) throw new Error("Failed to fetch entries");
 
-  const grouped = {};
-  for (const row of data) {
-    let walletStr = String(row.wallet).trim().replace(/\u0000/g, "");
-
+  // 3) Normalize & build weight list
+  //    We do a weighted pick without expanding into a huge array.
+  const weights = []; // [{ wallet, weight }]
+  const byWallet = {}; // aggregate entries per wallet (optional but cleaner)
+  for (const r of rows || []) {
+    const raw = (r.wallet ?? "").toString().trim().replace(/\u0000/g, "");
+    let base58;
     try {
-      const pubkey = new PublicKey(walletStr); // confirm it's valid
-      walletStr = pubkey.toBase58(); // normalize
+      base58 = new PublicKey(raw).toBase58(); // normalize & validate
     } catch {
-      console.warn("Invalid wallet skipped:", row.wallet);
+      console.warn("Skipping invalid wallet in entries:", r.wallet);
       continue;
     }
+    const w = Math.floor(Number(r.entries || 0));
+    if (!Number.isFinite(w) || w <= 0) continue;
 
-    if (!grouped[walletStr]) grouped[walletStr] = { totalEntries: 0, totalTix: 0 };
-    grouped[walletStr].totalEntries += row.entries || 0;
-    grouped[walletStr].totalTix += row.tix_amount || 0;
+    byWallet[base58] = (byWallet[base58] || 0) + w;
   }
 
-  const eligible = [];
-  for (const wallet of Object.keys(grouped)) {
-    try {
-      const pubkey = new PublicKey(wallet);
-      let heldRatio = 1;
+  for (const [wallet, weight] of Object.entries(byWallet)) {
+    if (weight > 0) weights.push({ wallet, weight });
+  }
 
-      if (grouped[wallet].totalTix > 0) {
-        const ata = await getAssociatedTokenAddress(TIX_MINT, pubkey, false);
+  const totalWeight = weights.reduce((s, x) => s + x.weight, 0);
+  if (totalWeight <= 0) return { winner: null, winnerWeight: 0, totalWeight: 0 };
 
-        // --- FIX: don’t throw if ATA doesn't exist; treat balance as 0 ---
-        const ataInfo = await connection.getAccountInfo(ata);
-
-        let currentBalance = 0;
-        if (ataInfo) {
-          const account = await getAccount(connection, ata);
-          currentBalance = Number(account.amount) / 1e6; // TIX has 6 decimals
-        }
-        heldRatio = currentBalance / grouped[wallet].totalTix;
-        // clamp to [0,1] just in case
-        heldRatio = Math.max(0, Math.min(heldRatio, 1));
-      }
-
-      const effective = Math.min(
-        Math.floor(grouped[wallet].totalEntries * heldRatio),
-        grouped[wallet].totalEntries
-      );
-
-      const count = Math.floor(effective);
-      if (count > 0) eligible.push(...Array(count).fill(wallet));
-    } catch (err) {
-      console.warn(`Failed to process wallet ${wallet}`, err.message);
+  // 4) Weighted random pick
+  let r = Math.floor(Math.random() * totalWeight);
+  let winner = null;
+  let winnerWeight = 0;
+  for (const { wallet, weight } of weights) {
+    if (r < weight) {
+      winner = wallet;
+      winnerWeight = weight;
+      break;
     }
+    r -= weight;
   }
 
-  return eligible;
-}
-
-function pickRandomWinner(pool) {
-  const index = Math.floor(Math.random() * pool.length);
-  return pool[index];
+  return { winner, winnerWeight, totalWeight };
 }
 
 // -------------------- LOG --------------------
@@ -128,15 +111,17 @@ async function logDraw(winner, amount, entries, signature) {
 
 // -------------------- MAIN --------------------
 async function runDraw() {
-  console.log("Fetching entries...");
-  const pool = await fetchEligibleEntries();
-  if (pool.length === 0) throw new Error("No eligible entries");
+  console.log("Building eligible pool (weighted)...");
+  const { winner, winnerWeight, totalWeight } = await fetchEligibleWeighted();
 
-  const winner = pickRandomWinner(pool);
-  const entries = pool.filter(w => w === winner).length;
+  if (!winner) {
+    console.log("No eligible entries");
+    throw new Error("No eligible entries");
+  }
 
-  console.log(`Winner: ${winner} with ${entries} entries`);
+  console.log(`Winner: ${winner} (tickets: ${winnerWeight} of ${totalWeight})`);
 
+  // Treasury payout
   const jackpotBalance = await connection.getBalance(TREASURY);
   const buffer = 5000;
   const available = jackpotBalance - buffer;
@@ -162,10 +147,12 @@ async function runDraw() {
   tx.recentBlockhash = latestBlockhash.blockhash;
   tx.feePayer = payer.publicKey;
 
+  // NOTE: This will only work if `payer` can sign for TREASURY (i.e., is the same key).
+  // If TREASURY is a different key, include it as a signer too.
   const sig = await sendAndConfirmTransaction(connection, tx, [payer]);
   console.log("Transaction sent:", sig);
 
-  await logDraw(winner, available, entries, sig);
+  await logDraw(winner, available, winnerWeight, sig);
   console.log("Draw complete.");
 }
 
